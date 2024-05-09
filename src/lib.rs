@@ -1,4 +1,7 @@
-use geo::{coord, point, Intersects, Line, LinesIter, Point, Rect, Translate};
+use geo::{
+    coord, line_intersection::*, point, Intersects, Line, LinesIter, Point, Rect, Rotate, Translate,
+};
+use libm::atan;
 
 #[derive(Debug)]
 pub struct Config {
@@ -15,9 +18,9 @@ pub struct Collision {
 pub fn run(config: Config) -> Result<(), Box<dyn std::error::Error>> {
     let table: Rect = Rect::new(coord! {x:-90.,y:-45.}, coord! {x:90.,y:45.});
 
-    let collision = get_collision(&config, &table);
-
-    dbg!(collision);
+    let collision = get_collision(&config, &table).expect("No collision");
+    let bounce_line = get_bounce_line(&collision);
+    dbg!(bounce_line);
 
     Ok(())
 }
@@ -34,8 +37,6 @@ pub fn get_collision(config: &Config, table: &Rect) -> Option<Collision> {
         ball_line = Line::new(config.ball, ball_destination);
     }
 
-    dbg!(ball_line, table);
-
     let intersect_line = table.lines_iter().find(|line| line.intersects(&ball_line));
 
     match intersect_line {
@@ -46,5 +47,51 @@ pub fn get_collision(config: &Config, table: &Rect) -> Option<Collision> {
             })
         }
         None => return None,
+    }
+}
+
+pub fn get_bounce_line(collision: &Collision) -> Line {
+    // if collision.line1.slope() == f64::INFINITY {
+    //     return Line::new(
+    //         collision.line1.end_point(),
+    //         collision.line1.end_point().translate(-180., 0.),
+    //     );
+    // }
+    // let slope = collision.line2.slope();
+    //
+    // if slope == 0. {
+    //     Line::new(
+    //         collision.line1.end_point(),
+    //         collision
+    //             .line1
+    //             .end_point()
+    //             .translate(180., collision.line1.slope() * -180.),
+    //     )
+    // } else {
+    //     Line::new(
+    //         collision.line1.end_point(),
+    //         collision
+    //             .line1
+    //             .end_point()
+    //             .translate(collision.line1.slope() * -90., 90.),
+    //     )
+    // }
+
+    let intersect =
+        match line_intersection(collision.line1, collision.line2).expect("Lines don't collide") {
+            LineIntersection::SinglePoint { intersection, .. } => intersection,
+            LineIntersection::Collinear { intersection } => {
+                panic!("Collision lines are colinear in {:#?}", intersection)
+            }
+        };
+    let rotate_degrees = 2. * atan(collision.line1.slope()).to_degrees();
+
+    let rotated_line = collision
+        .line1
+        .rotate_around_point(-rotate_degrees, intersect.into());
+
+    Line {
+        start: rotated_line.end_point().into(),
+        end: rotated_line.start_point().into(),
     }
 }
