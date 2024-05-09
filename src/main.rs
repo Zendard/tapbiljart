@@ -1,27 +1,40 @@
+use geo::point;
 use std::io;
-
 use tapbiljart::Config;
 
 fn main() {
+    let config = get_config();
+    dbg!(&config);
+
+    if let Err(e) = tapbiljart::run(config) {
+        eprintln!("Application error: {e}");
+        std::process::exit(1);
+    }
+}
+
+fn get_config() -> Config {
     let mut config = Config {
-        ball: tapbiljart::Point { x: 0.0, y: 0.0 },
+        ball: point! { x: 0., y: 0. },
+        angle: 0.,
     };
     let mut buffer = String::new();
 
     println!("Ball x coordinate (0): ");
     io::stdin().read_line(&mut buffer).unwrap();
     buffer.pop();
-    config.ball.x = buffer.parse().unwrap_or_default();
+    *config.ball.x_mut() = buffer.parse().unwrap_or_default();
+    buffer = String::new();
 
     println!("Ball y coordinate (0): ");
     io::stdin().read_line(&mut buffer).unwrap_or(0);
     buffer.pop();
-    config.ball.y = buffer.parse().unwrap_or_default();
+    *config.ball.y_mut() = buffer.parse().unwrap_or_default();
+    buffer = String::new();
 
-    dbg!(config);
+    println!("Ball shoot angle (0): ");
+    io::stdin().read_line(&mut buffer).unwrap_or(0);
+    buffer.pop();
+    config.angle = buffer.parse().unwrap_or_default();
 
-    if let Err(e) = tapbiljart::run() {
-        eprintln!("Application error: {e}");
-        std::process::exit(1);
-    }
+    config
 }
